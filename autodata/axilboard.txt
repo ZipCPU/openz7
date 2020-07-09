@@ -1,0 +1,74 @@
+################################################################################
+##
+## Filename:	autodata/axilboard.txt
+##
+## Project:	OpenZ7, an open source Zynq demo based on the Arty Z7-20
+##
+## Purpose:	Describes how to connect the axilboard peripheral to the
+##		AXI-lite control bus internal to the design.
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
+################################################################################
+##
+## Copyright (C) 2020, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
+################################################################################
+##
+##
+@PREFIX=board
+@DEVID=BOARD
+@NADDR=8
+@SLAVE.BUS=axil
+@SLAVE.TYPE=DOUBLE
+@SLAVE.ANSPREFIX=S_AXI_
+@MAIN.PORTLIST=
+		i_sw, i_btn, o_led,
+		o_redled, o_grnled, o_bluled
+@MAIN.IODECL=
+	input	wire	[1:0]	i_sw;
+	input	wire	[3:0]	i_btn;
+	output	wire	[3:0]	o_led;
+	output	wire	[1:0]	o_redled;
+	output	wire	[1:0]	o_grnled;
+	output	wire	[1:0]	o_bluled;
+@MAIN.INSERT=
+	axilboard // #()
+	@$(PREFIX)i (
+		.S_AXI_ACLK(@$(SLAVE.BUS.CLOCK.WIRE)),
+		.S_AXI_ARESETN(@$(SLAVE.BUS.RESET)),
+		//
+		@$(SLAVE.ANSIPORTLIST),
+		//
+		.i_sw(i_sw), .i_btn(i_btn), .o_led(o_led),
+		.o_led_red(o_redled), .o_led_grn(o_grnled),
+		  .o_led_blu(o_bluled)
+	);
+
+@REGS.N=6
+@REGS.0=0 R_VERSION	VERSION
+@REGS.1=1 R_BUILDTIME	BUILDTIME
+@REGS.2=2 R_PWRCOUNT	PWRCOUNT
+@REGS.3=3 R_RTCCOUNT	RTCCOUNT
+@REGS.4=4 R_SPIO	SPIO
+@REGS.5=5 R_CLRLED	CLRLED

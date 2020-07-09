@@ -1,0 +1,1035 @@
+################################################################################
+##
+## Filename: 	zynqps.txt
+##
+## Project:	OpenZ7, an open source Zynq demo based on the Arty Z7-20
+##
+## Purpose:	
+##
+## Creator:	Dan Gisselquist, Ph.D.
+##		Gisselquist Technology, LLC
+##
+################################################################################
+##
+## Copyright (C) 2020, Gisselquist Technology, LLC
+##
+## This program is free software (firmware): you can redistribute it and/or
+## modify it under the terms of the GNU General Public License as published
+## by the Free Software Foundation, either version 3 of the License, or (at
+## your option) any later version.
+##
+## This program is distributed in the hope that it will be useful, but WITHOUT
+## ANY WARRANTY; without even the implied warranty of MERCHANTIBILITY or
+## FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+## for more details.
+##
+## You should have received a copy of the GNU General Public License along
+## with this program.  (It's in the $(ROOT)/doc directory.  Run make with no
+## target there if the PDF file isn't present.)  If not, see
+## <http://www.gnu.org/licenses/> for a copy.
+##
+## License:	GPL, v3, as defined and found on www.gnu.org,
+##		http://www.gnu.org/licenses/gpl.html
+##
+##
+################################################################################
+##
+##
+##
+@REGISTER.BUS=axi
+@PREFIX=core
+@CLOCK.TOP=
+@CLOCK.NAME=clk
+@CLOCK.WIRE=i_clk
+@CLOCK.FREQUENCY=100000000
+@TOP.PORTLIST=
+	// Core Zynq PS signals
+	DDR_Clk_n,
+	DDR_Clk,
+	DDR_CS_n, DDR_CKE, DDR_RAS_n, DDR_WEB, DDR_CAS_n,
+	DDR_DRSTB, DDR_ODT,
+	DDR_BankAddr, DDR_Addr,
+	DDR_VRN, DDR_VRP,
+	DDR_DM, DDR_DQ, DDR_DQS_n, DDR_DQS,
+	//
+	PS_SRSTB, PS_CLK, PS_PORB
+@TOP.IODECL=
+	inout	wire		DDR_CAS_n;
+	inout	wire		DDR_CKE;
+	inout	wire		DDR_Clk_n;
+	inout	wire		DDR_Clk;
+	inout	wire		DDR_CS_n;
+	inout	wire		DDR_DRSTB;
+	inout	wire		DDR_ODT;
+	inout	wire		DDR_RAS_n;
+	inout	wire		DDR_WEB;
+	inout	wire	[2:0]	DDR_BankAddr;
+	inout	wire	[14:0]	DDR_Addr;
+	inout	wire		DDR_VRN;
+	inout	wire		DDR_VRP;
+	inout	wire	[3:0]	DDR_DM;
+	inout	wire	[31:0]	DDR_DQ;
+	inout	wire	[3:0]	DDR_DQS_n;
+	inout	wire	[3:0]	DDR_DQS;
+	inout	wire		PS_SRSTB;
+	inout	wire		PS_CLK;
+	inout	wire		PS_PORB;
+@TOP.DEFNS=
+	wire			s_clk, s_reset;
+	wire	[53:0]		MIO;
+	wire			FCLK_CLK0;
+	wire			FCLK_RESET0_N;
+	wire			gp0_aclk, gp0_aresetn;
+	wire			hp0_aclk, hp0_aresetn;
+	reg			r_reset;	
+	reg	[2:0]		reset_pipe;
+@TOP.INSERT=
+	assign	s_clk   = FCLK_CLK0;
+	assign	s_reset = r_reset;
+
+	initial { r_reset, reset_pipe } = -1;
+	always @(posedge FCLK_CLK0, negedge FCLK_RESET0_N)
+	if (!FCLK_RESET0_N)
+		{ r_reset, reset_pipe } <= -1;
+	else
+		{ r_reset, reset_pipe } <= { reset_pipe, 1'b0 };
+
+	assign	gp0_aclk    = FCLK_CLK0;
+	assign	gp0_aresetn = !s_reset;
+	assign	hp0_aclk    = FCLK_CLK0;
+	assign	hp0_aresetn = !s_reset;
+
+	processing_system7_0
+	arm_ps(
+		.FCLK_CLK0(FCLK_CLK0),
+		.FCLK_RESET0_N(FCLK_RESET0_N),
+		.MIO(MIO),
+		//
+		// DDR3 memory connection wires
+		.DDR_CAS_n(DDR_CAS_n),
+		.DDR_CKE(DDR_CKE),
+		.DDR_Clk_n(DDR_Clk_n),
+		.DDR_Clk(DDR_Clk),
+		.DDR_CS_n(DDR_CS_n),
+		.DDR_DRSTB(DDR_DRSTB),
+		.DDR_ODT(DDR_ODT),
+		.DDR_RAS_n(DDR_RAS_n),
+		.DDR_WEB(DDR_WEB),
+		.DDR_BankAddr(DDR_BankAddr),
+		.DDR_Addr(DDR_Addr),
+		.DDR_VRN(DDR_VRN),
+		.DDR_VRP(DDR_VRP),
+		.DDR_DM(DDR_DM),
+		.DDR_DQ(DDR_DQ),
+		.DDR_DQS_n(DDR_DQS_n),
+		.DDR_DQS(DDR_DQS),
+		//
+		.PS_SRSTB(PS_SRSTB),
+		.PS_CLK(  PS_CLK),
+		.PS_PORB( PS_PORB),
+		//
+		@$(gp0.ZYNQ.CONNECT),
+		@$(hp0.ZYNQ.CONNECT)
+	);
+
+##
+##
+##
+@PREFIX=gp0
+@BUS.NAME=axi
+@BUS.WIDTH=32
+@BUS.IDWIDTH=12
+@BUS.TYPE=axi4
+@BUS.CLOCK=clk
+@BUS.RESET=!i_reset
+@MASTER.BUS=axi
+@MASTER.TYPE=CPU
+@TOP.PORTLIST=
+@TOP.IODECL=
+@TOP.DEFNS=
+	//
+	// GP0: An AXI (master) port to control the processing logic
+	//
+	// GP0 32-bit AXI3 wire definitions
+	wire		gp0_axi3_AWVALID;
+	wire		gp0_axi3_AWREADY;
+	wire	[11:0]	gp0_axi3_AWID;
+	wire	[31:0]	gp0_axi3_AWADDR;
+	wire	[3:0]	gp0_axi3_AWLEN;
+	wire	[2:0]	gp0_axi3_AWSIZE;
+	wire	[1:0]	gp0_axi3_AWBURST;
+	wire	[1:0]	gp0_axi3_AWLOCK;
+	wire	[3:0]	gp0_axi3_AWCACHE;
+	wire	[2:0]	gp0_axi3_AWPROT;
+	wire	[3:0]	gp0_axi3_AWQOS;
+		//
+	wire		gp0_axi3_WVALID;
+	wire		gp0_axi3_WREADY;
+	wire	[11:0]	gp0_axi3_WID;
+	wire	[31:0]	gp0_axi3_WDATA;
+	wire	[3:0]	gp0_axi3_WSTRB;
+	wire		gp0_axi3_WLAST;
+		//
+	wire		gp0_axi3_BVALID;
+	wire		gp0_axi3_BREADY;
+	wire	[11:0]	gp0_axi3_BID;
+	wire	[1:0]	gp0_axi3_BRESP;
+		//
+	wire		gp0_axi3_ARVALID;
+	wire		gp0_axi3_ARREADY;
+	wire	[11:0]	gp0_axi3_ARID;
+	wire	[31:0]	gp0_axi3_ARADDR;
+	wire	[3:0]	gp0_axi3_ARLEN;
+	wire	[2:0]	gp0_axi3_ARSIZE;
+	wire	[1:0]	gp0_axi3_ARBURST;
+	wire	[1:0]	gp0_axi3_ARLOCK;
+	wire	[3:0]	gp0_axi3_ARCACHE;
+	wire	[2:0]	gp0_axi3_ARPROT;
+	wire	[3:0]	gp0_axi3_ARQOS;
+		//
+	wire		gp0_axi3_RVALID;
+	wire		gp0_axi3_RREADY;
+	wire	[11:0]	gp0_axi3_RID;
+	wire	[31:0]	gp0_axi3_RDATA;
+	wire		gp0_axi3_RLAST;
+	wire	[1:0]	gp0_axi3_RRESP;
+	//
+	// GP0 32-bit AXI4 wire definitions
+	wire		gp0_axi4_AWVALID;
+	wire		gp0_axi4_AWREADY;
+	wire	[11:0]	gp0_axi4_AWID;
+	wire	[31:0]	gp0_axi4_AWADDR;
+	wire	[7:0]	gp0_axi4_AWLEN;
+	wire	[2:0]	gp0_axi4_AWSIZE;
+	wire	[1:0]	gp0_axi4_AWBURST;
+	wire		gp0_axi4_AWLOCK;
+	wire	[3:0]	gp0_axi4_AWCACHE;
+	wire	[2:0]	gp0_axi4_AWPROT;
+	wire	[3:0]	gp0_axi4_AWQOS;
+		//
+	wire		gp0_axi4_WVALID;
+	wire		gp0_axi4_WREADY;
+	// [11:0]	gp0_axi4_WID;
+	wire	[31:0]	gp0_axi4_WDATA;
+	wire	[3:0]	gp0_axi4_WSTRB;
+	wire		gp0_axi4_WLAST;
+		//
+	wire		gp0_axi4_BVALID;
+	wire		gp0_axi4_BREADY;
+	wire	[11:0]	gp0_axi4_BID;
+	wire	 [1:0]	gp0_axi4_BRESP;
+		//
+	wire		gp0_axi4_ARVALID;
+	wire		gp0_axi4_ARREADY;
+	wire	[11:0]	gp0_axi4_ARID;
+	wire	[31:0]	gp0_axi4_ARADDR;
+	wire	[7:0]	gp0_axi4_ARLEN;
+	wire	[2:0]	gp0_axi4_ARSIZE;
+	wire	[1:0]	gp0_axi4_ARBURST;
+	wire		gp0_axi4_ARLOCK;
+	wire	[3:0]	gp0_axi4_ARCACHE;
+	wire	[2:0]	gp0_axi4_ARPROT;
+	wire	[3:0]	gp0_axi4_ARQOS;
+		//
+	wire		gp0_axi4_RVALID;
+	wire		gp0_axi4_RREADY;
+	wire [11:0]	gp0_axi4_RID;
+	wire [31:0]	gp0_axi4_RDATA;
+	wire		gp0_axi4_RLAST;
+	wire	[1:0]	gp0_axi4_RRESP;
+@ZYNQ.CONNECT=
+		.M_AXI_GP0_ACLK(gp0_aclk),
+		// .M_AXI_GP0_ARESETN(gp0_aresetn),
+		//
+		.M_AXI_GP0_AWVALID(gp0_axi3_AWVALID),
+		.M_AXI_GP0_AWREADY(gp0_axi3_AWREADY && gp0_aresetn),
+		.M_AXI_GP0_AWID(   gp0_axi3_AWID),
+		.M_AXI_GP0_AWADDR( gp0_axi3_AWADDR),
+		.M_AXI_GP0_AWLEN(  gp0_axi3_AWLEN),
+		.M_AXI_GP0_AWSIZE( gp0_axi3_AWSIZE),
+		.M_AXI_GP0_AWBURST(gp0_axi3_AWBURST),
+		.M_AXI_GP0_AWLOCK( gp0_axi3_AWLOCK),
+		.M_AXI_GP0_AWCACHE(gp0_axi3_AWCACHE),
+		.M_AXI_GP0_AWPROT( gp0_axi3_AWPROT),
+		.M_AXI_GP0_AWQOS(  gp0_axi3_AWQOS),
+		//
+		.M_AXI_GP0_WVALID(gp0_axi3_WVALID),
+		.M_AXI_GP0_WREADY(gp0_axi3_WREADY && gp0_aresetn),
+		.M_AXI_GP0_WID(   gp0_axi3_WID),
+		.M_AXI_GP0_WDATA( gp0_axi3_WDATA),
+		.M_AXI_GP0_WSTRB( gp0_axi3_WSTRB),
+		.M_AXI_GP0_WLAST( gp0_axi3_WLAST),
+		//
+		.M_AXI_GP0_BVALID(gp0_axi3_BVALID && gp0_aresetn),
+		.M_AXI_GP0_BREADY(gp0_axi3_BREADY),
+		.M_AXI_GP0_BID(   gp0_axi3_BID),
+		.M_AXI_GP0_BRESP( gp0_axi3_BRESP),
+		//
+		.M_AXI_GP0_ARVALID(gp0_axi3_ARVALID),
+		.M_AXI_GP0_ARREADY(gp0_axi3_ARREADY && gp0_aresetn),
+		.M_AXI_GP0_ARID(   gp0_axi3_ARID),
+		.M_AXI_GP0_ARADDR( gp0_axi3_ARADDR),
+		.M_AXI_GP0_ARLEN(  gp0_axi3_ARLEN),
+		.M_AXI_GP0_ARSIZE( gp0_axi3_ARSIZE),
+		.M_AXI_GP0_ARBURST(gp0_axi3_ARBURST),
+		.M_AXI_GP0_ARLOCK( gp0_axi3_ARLOCK),
+		.M_AXI_GP0_ARCACHE(gp0_axi3_ARCACHE),
+		.M_AXI_GP0_ARPROT( gp0_axi3_ARPROT),
+		.M_AXI_GP0_ARQOS(  gp0_axi3_ARQOS),
+		//
+		.M_AXI_GP0_RVALID(gp0_axi3_RVALID && gp0_aresetn),
+		.M_AXI_GP0_RREADY(gp0_axi3_RREADY),
+		.M_AXI_GP0_RID(gp0_axi3_RID),
+		.M_AXI_GP0_RDATA(gp0_axi3_RDATA),
+		.M_AXI_GP0_RLAST(gp0_axi3_RLAST),
+		.M_AXI_GP0_RRESP(gp0_axi3_RRESP)
+@TOP.INSERT=
+	//
+	// Convert the GP0 signals from AXI3 to AXI4
+	axi32axi #(
+		.C_AXI_ID_WIDTH(12),
+		.C_AXI_ADDR_WIDTH(32),
+		.C_AXI_DATA_WIDTH(32)
+	) gp0_axi3_axi4 (
+		.S_AXI_ACLK(gp0_aclk),
+		.S_AXI_ARESETN(gp0_aresetn),
+		//
+		// GP0 32-bit AXI3 connections
+		//
+		.S_AXI_AWVALID(gp0_axi3_AWVALID && gp0_aresetn),
+		.S_AXI_AWREADY(gp0_axi3_AWREADY),
+		.S_AXI_AWID(   gp0_axi3_AWID),
+		.S_AXI_AWADDR( gp0_axi3_AWADDR),
+		.S_AXI_AWLEN(  gp0_axi3_AWLEN),
+		.S_AXI_AWSIZE( gp0_axi3_AWSIZE),
+		.S_AXI_AWBURST(gp0_axi3_AWBURST),
+		.S_AXI_AWLOCK( gp0_axi3_AWLOCK),
+		.S_AXI_AWCACHE(gp0_axi3_AWCACHE),
+		.S_AXI_AWPROT( gp0_axi3_AWPROT),
+		.S_AXI_AWQOS(  gp0_axi3_AWQOS),
+		//
+		.S_AXI_WVALID(gp0_axi3_WVALID && gp0_aresetn),
+		.S_AXI_WREADY(gp0_axi3_WREADY),
+		.S_AXI_WID(   gp0_axi3_WID),
+		.S_AXI_WDATA( gp0_axi3_WDATA),
+		.S_AXI_WSTRB( gp0_axi3_WSTRB),
+		.S_AXI_WLAST( gp0_axi3_WLAST),
+		//
+		.S_AXI_BVALID(gp0_axi3_BVALID),
+		.S_AXI_BREADY(gp0_axi3_BREADY && gp0_aresetn),
+		.S_AXI_BID(   gp0_axi3_BID),
+		.S_AXI_BRESP( gp0_axi3_BRESP),
+		//
+		.S_AXI_ARVALID(gp0_axi3_ARVALID && gp0_aresetn),
+		.S_AXI_ARREADY(gp0_axi3_ARREADY),
+		.S_AXI_ARID(   gp0_axi3_ARID),
+		.S_AXI_ARADDR( gp0_axi3_ARADDR),
+		.S_AXI_ARLEN(  gp0_axi3_ARLEN),
+		.S_AXI_ARSIZE( gp0_axi3_ARSIZE),
+		.S_AXI_ARBURST(gp0_axi3_ARBURST),
+		.S_AXI_ARLOCK( gp0_axi3_ARLOCK),
+		.S_AXI_ARCACHE(gp0_axi3_ARCACHE),
+		.S_AXI_ARPROT( gp0_axi3_ARPROT),
+		.S_AXI_ARQOS(  gp0_axi3_ARQOS),
+		//
+		.S_AXI_RVALID(gp0_axi3_RVALID),
+		.S_AXI_RREADY(gp0_axi3_RREADY && gp0_aresetn),
+		.S_AXI_RID(   gp0_axi3_RID),
+		.S_AXI_RDATA( gp0_axi3_RDATA),
+		.S_AXI_RLAST( gp0_axi3_RLAST),
+		.S_AXI_RRESP( gp0_axi3_RRESP),
+		//
+		// GP0 32-bit AXI4 (outgoing) connections
+		//
+		.M_AXI_AWVALID(gp0_axi4_AWVALID),
+		.M_AXI_AWREADY(gp0_axi4_AWREADY),
+		.M_AXI_AWID(   gp0_axi4_AWID),
+		.M_AXI_AWADDR( gp0_axi4_AWADDR),
+		.M_AXI_AWLEN(  gp0_axi4_AWLEN),
+		.M_AXI_AWSIZE( gp0_axi4_AWSIZE),
+		.M_AXI_AWBURST(gp0_axi4_AWBURST),
+		.M_AXI_AWLOCK( gp0_axi4_AWLOCK),
+		.M_AXI_AWCACHE(gp0_axi4_AWCACHE),
+		.M_AXI_AWPROT( gp0_axi4_AWPROT),
+		.M_AXI_AWQOS(  gp0_axi4_AWQOS),
+		//
+		.M_AXI_WVALID( gp0_axi4_WVALID),
+		.M_AXI_WREADY(gp0_axi4_WREADY),
+		// .M_AXI_WID(   gp0_axi4_WID),
+		.M_AXI_WDATA( gp0_axi4_WDATA),
+		.M_AXI_WSTRB( gp0_axi4_WSTRB),
+		.M_AXI_WLAST( gp0_axi4_WLAST),
+		//
+		.M_AXI_BVALID(gp0_axi4_BVALID),
+		.M_AXI_BREADY(gp0_axi4_BREADY),
+		.M_AXI_BID(   gp0_axi4_BID),
+		.M_AXI_BRESP( gp0_axi4_BRESP),
+		//
+		.M_AXI_ARVALID(gp0_axi4_ARVALID),
+		.M_AXI_ARREADY(gp0_axi4_ARREADY),
+		.M_AXI_ARID(   gp0_axi4_ARID),
+		.M_AXI_ARADDR( gp0_axi4_ARADDR),
+		.M_AXI_ARLEN(  gp0_axi4_ARLEN),
+		.M_AXI_ARSIZE( gp0_axi4_ARSIZE),
+		.M_AXI_ARBURST(gp0_axi4_ARBURST),
+		.M_AXI_ARLOCK( gp0_axi4_ARLOCK),
+		.M_AXI_ARCACHE(gp0_axi4_ARCACHE),
+		.M_AXI_ARPROT( gp0_axi4_ARPROT),
+		.M_AXI_ARQOS(  gp0_axi4_ARQOS),
+		//
+		.M_AXI_RVALID(gp0_axi4_RVALID),
+		.M_AXI_RREADY(gp0_axi4_RREADY),
+		.M_AXI_RID(   gp0_axi4_RID),
+		.M_AXI_RDATA( gp0_axi4_RDATA),
+		.M_AXI_RLAST( gp0_axi4_RLAST),
+		.M_AXI_RRESP( gp0_axi4_RRESP)
+		);
+@TOP.MAIN=
+		gp0_axi4_AWVALID,
+		gp0_axi4_AWREADY,
+		gp0_axi4_AWID,
+		gp0_axi4_AWADDR,
+		gp0_axi4_AWLEN,
+		gp0_axi4_AWSIZE,
+		gp0_axi4_AWBURST,
+		gp0_axi4_AWLOCK,
+		gp0_axi4_AWCACHE,
+		gp0_axi4_AWPROT,
+		gp0_axi4_AWQOS,
+		//
+		gp0_axi4_WVALID,
+		gp0_axi4_WREADY,
+		// gp0_axi4_WID,
+		gp0_axi4_WDATA,
+		gp0_axi4_WSTRB,
+		gp0_axi4_WLAST,
+		//
+		gp0_axi4_BVALID,
+		gp0_axi4_BREADY,
+		gp0_axi4_BID,
+		gp0_axi4_BRESP,
+		//
+		gp0_axi4_ARVALID,
+		gp0_axi4_ARREADY,
+		gp0_axi4_ARID,
+		gp0_axi4_ARADDR,
+		gp0_axi4_ARLEN,
+		gp0_axi4_ARSIZE,
+		gp0_axi4_ARBURST,
+		gp0_axi4_ARLOCK,
+		gp0_axi4_ARCACHE,
+		gp0_axi4_ARPROT,
+		gp0_axi4_ARQOS,
+		//
+		gp0_axi4_RVALID,
+		gp0_axi4_RREADY,
+		gp0_axi4_RID,
+		gp0_axi4_RDATA,
+		gp0_axi4_RLAST,
+		gp0_axi4_RRESP
+@MAIN.PORTLIST=
+		// i_GP0_ACLK,
+		i_GP0_AWVALID,
+		o_GP0_AWREADY,
+		i_GP0_AWID,
+		i_GP0_AWADDR,
+		i_GP0_AWLEN,
+		i_GP0_AWSIZE,
+		i_GP0_AWBURST,
+		i_GP0_AWLOCK,
+		i_GP0_AWCACHE,
+		i_GP0_AWPROT,
+		i_GP0_AWQOS,
+		//
+		i_GP0_WVALID,
+		o_GP0_WREADY,
+		// M_AXI_GP0_WID,
+		i_GP0_WDATA,
+		i_GP0_WSTRB,
+		i_GP0_WLAST,
+		//
+		o_GP0_BVALID,
+		i_GP0_BREADY,
+		o_GP0_BID,
+		o_GP0_BRESP,
+		//
+		i_GP0_ARVALID,
+		o_GP0_ARREADY,
+		i_GP0_ARID,
+		i_GP0_ARADDR,
+		i_GP0_ARLEN,
+		i_GP0_ARSIZE,
+		i_GP0_ARBURST,
+		i_GP0_ARLOCK,
+		i_GP0_ARCACHE,
+		i_GP0_ARPROT,
+		i_GP0_ARQOS,
+		//
+		o_GP0_RVALID,
+		i_GP0_RREADY,
+		o_GP0_RID,
+		o_GP0_RDATA,
+		o_GP0_RLAST,
+		o_GP0_RRESP
+@MAIN.IODECL=
+	//
+	// GP0 32-bit AXI4 wire definitions
+	input	wire		i_GP0_AWVALID;
+	output	wire		o_GP0_AWREADY;
+	input	wire	[11:0]	i_GP0_AWID;
+	// Verilator lint_off UNUSED
+	input	wire	[31:0]	i_GP0_AWADDR;
+	// Verilator lint_on  UNUSED
+	input	wire	[7:0]	i_GP0_AWLEN;
+	input	wire	[2:0]	i_GP0_AWSIZE;
+	input	wire	[1:0]	i_GP0_AWBURST;
+	input	wire		i_GP0_AWLOCK;
+	input	wire	[3:0]	i_GP0_AWCACHE;
+	input	wire	[2:0]	i_GP0_AWPROT;
+	input	wire	[3:0]	i_GP0_AWQOS;
+		//
+	input	wire		i_GP0_WVALID;
+	output	wire		o_GP0_WREADY;
+	// [11:0]	gp0_axi4_WID;
+	input	wire	[31:0]	i_GP0_WDATA;
+	input	wire	[3:0]	i_GP0_WSTRB;
+	input	wire		i_GP0_WLAST;
+		//
+	output	wire		o_GP0_BVALID;
+	input	wire		i_GP0_BREADY;
+	output	wire	[11:0]	o_GP0_BID;
+	output	wire	 [1:0]	o_GP0_BRESP;
+		//
+	input	wire		i_GP0_ARVALID;
+	output	wire		o_GP0_ARREADY;
+	input	wire	[11:0]	i_GP0_ARID;
+	// Verilator lint_off UNUSED
+	input	wire	[31:0]	i_GP0_ARADDR;
+	// Verilator lint_on  UNUSED
+	input	wire	[7:0]	i_GP0_ARLEN;
+	input	wire	[2:0]	i_GP0_ARSIZE;
+	input	wire	[1:0]	i_GP0_ARBURST;
+	input	wire		i_GP0_ARLOCK;
+	input	wire	[3:0]	i_GP0_ARCACHE;
+	input	wire	[2:0]	i_GP0_ARPROT;
+	input	wire	[3:0]	i_GP0_ARQOS;
+		//
+	output	wire		o_GP0_RVALID;
+	input	wire		i_GP0_RREADY;
+	output	wire [11:0]	o_GP0_RID;
+	output	wire [31:0]	o_GP0_RDATA;
+	output	wire		o_GP0_RLAST;
+	output	wire	[1:0]	o_GP0_RRESP;
+@MAIN.INSERT=
+	//
+	// Connect the PS master port (AXI3 out of the Zynq) to our internal
+	// bus representation
+	assign	@$(MASTER.PREFIX)_awvalid = i_GP0_AWVALID;
+	assign	o_GP0_AWREADY = @$(MASTER.PREFIX)_awready;
+	assign	@$(MASTER.PREFIX)_awid    = i_GP0_AWID;
+	assign	@$(MASTER.PREFIX)_awaddr  = i_GP0_AWADDR[@$(MASTER.BUS.AWID)-1:0];
+	assign	@$(MASTER.PREFIX)_awlen   = i_GP0_AWLEN;
+	assign	@$(MASTER.PREFIX)_awsize  = i_GP0_AWSIZE;
+	assign	@$(MASTER.PREFIX)_awburst = i_GP0_AWBURST;
+	assign	@$(MASTER.PREFIX)_awlock  = i_GP0_AWLOCK;
+	assign	@$(MASTER.PREFIX)_awcache = i_GP0_AWCACHE;
+	assign	@$(MASTER.PREFIX)_awprot  = i_GP0_AWPROT;
+	assign	@$(MASTER.PREFIX)_awqos   = i_GP0_AWQOS;
+		//
+	assign	@$(MASTER.PREFIX)_wvalid = i_GP0_WVALID;
+	assign	o_GP0_WREADY = @$(MASTER.PREFIX)_wready;
+		// M_AXI_GP0_WID,
+	assign	@$(MASTER.PREFIX)_wdata  = i_GP0_WDATA;
+	assign	@$(MASTER.PREFIX)_wstrb  = i_GP0_WSTRB;
+	assign	@$(MASTER.PREFIX)_wlast  = i_GP0_WLAST;
+		//
+	assign	o_GP0_BVALID = @$(MASTER.PREFIX)_bvalid;
+	assign	@$(MASTER.PREFIX)_bready = i_GP0_BREADY;
+	assign	o_GP0_BID    = @$(MASTER.PREFIX)_bid;
+	assign	o_GP0_BRESP  = @$(MASTER.PREFIX)_bresp;
+		//
+	assign	@$(MASTER.PREFIX)_arvalid = i_GP0_ARVALID;
+	assign	o_GP0_ARREADY = @$(MASTER.PREFIX)_arready;
+	assign	@$(MASTER.PREFIX)_arid    = i_GP0_ARID;
+	assign	@$(MASTER.PREFIX)_araddr  = i_GP0_ARADDR[@$(MASTER.BUS.AWID)-1:0];
+	assign	@$(MASTER.PREFIX)_arsize  = i_GP0_ARSIZE;
+	assign	@$(MASTER.PREFIX)_arburst = i_GP0_ARBURST;
+	assign	@$(MASTER.PREFIX)_arlen   = i_GP0_ARLEN;
+	assign	@$(MASTER.PREFIX)_arlock  = i_GP0_ARLOCK;
+	assign	@$(MASTER.PREFIX)_arcache = i_GP0_ARCACHE;
+	assign	@$(MASTER.PREFIX)_arprot  = i_GP0_ARPROT;
+	assign	@$(MASTER.PREFIX)_arqos   = i_GP0_ARQOS;
+		//
+	assign	o_GP0_RVALID = @$(MASTER.PREFIX)_rvalid;
+	assign	@$(MASTER.PREFIX)_rready = i_GP0_RREADY;
+	assign	o_GP0_RID    = @$(MASTER.PREFIX)_rid;
+	assign	o_GP0_RDATA  = @$(MASTER.PREFIX)_rdata;
+	assign	o_GP0_RLAST  = @$(MASTER.PREFIX)_rlast;
+	assign	o_GP0_RRESP  = @$(MASTER.PREFIX)_rresp;
+
+@PREFIX=hp0
+@$NADDR=(1<<29)
+@BUS.NAME=aximem
+@BUS.WIDTH=64
+@BUS.IDWIDTH=6
+@BUS.TYPE=axi4
+@BUS.CLOCK=clk
+@BUS.RESET=!i_reset
+@SLAVE.BUS=aximem
+@SLAVE.TYPE=OTHER
+@TOP.PORTLIST=
+@TOP.IODECL=
+@TOP.DEFNS=
+	//
+	// HP0: An AXI (slave) port to write memory from PL
+	//
+	// HP0 64-bit AXI3 wire definitions
+	wire		hp0_axi3_AWVALID;
+	wire		hp0_axi3_AWREADY;
+	wire	[5:0]	hp0_axi3_AWID;
+	wire	[31:0]	hp0_axi3_AWADDR;
+	wire	[3:0]	hp0_axi3_AWLEN;
+	wire	[2:0]	hp0_axi3_AWSIZE;
+	wire	[1:0]	hp0_axi3_AWBURST;
+	wire	[1:0]	hp0_axi3_AWLOCK;
+	wire	[3:0]	hp0_axi3_AWCACHE;
+	wire	[2:0]	hp0_axi3_AWPROT;
+	wire	[3:0]	hp0_axi3_AWQOS;
+		//
+	wire		hp0_axi3_WVALID;
+	wire		hp0_axi3_WREADY;
+	wire	[5:0]	hp0_axi3_WID;
+	wire	[63:0]	hp0_axi3_WDATA;
+	wire	[7:0]	hp0_axi3_WSTRB;
+	wire		hp0_axi3_WLAST;
+		//
+	wire		hp0_axi3_BVALID;
+	wire		hp0_axi3_BREADY;
+	wire	[5:0]	hp0_axi3_BID;
+	wire	[1:0]	hp0_axi3_BRESP;
+		//
+	wire		hp0_axi3_ARVALID;
+	wire		hp0_axi3_ARREADY;
+	wire	[5:0]	hp0_axi3_ARID;
+	wire	[31:0]	hp0_axi3_ARADDR;
+	wire	[3:0]	hp0_axi3_ARLEN;
+	wire	[2:0]	hp0_axi3_ARSIZE;
+	wire	[1:0]	hp0_axi3_ARBURST;
+	wire	[1:0]	hp0_axi3_ARLOCK;
+	wire	[3:0]	hp0_axi3_ARCACHE;
+	wire	[2:0]	hp0_axi3_ARPROT;
+	wire	[3:0]	hp0_axi3_ARQOS;
+		//
+	wire		hp0_axi3_RVALID;
+	wire		hp0_axi3_RREADY;
+	wire	[5:0]	hp0_axi3_RID;
+	wire	[63:0]	hp0_axi3_RDATA;
+	wire		hp0_axi3_RLAST;
+	wire	[1:0]	hp0_axi3_RRESP;
+	//
+	// GP0 32-bit AXI4 wire definitions
+	wire		hp0_axi4_AWVALID;
+	wire		hp0_axi4_AWREADY;
+	wire	[5:0]	hp0_axi4_AWID;
+	wire	[31:0]	hp0_axi4_AWADDR;
+	wire	[7:0]	hp0_axi4_AWLEN;
+	wire	[2:0]	hp0_axi4_AWSIZE;
+	wire	[1:0]	hp0_axi4_AWBURST;
+	wire		hp0_axi4_AWLOCK;
+	wire	[3:0]	hp0_axi4_AWCACHE;
+	wire	[2:0]	hp0_axi4_AWPROT;
+	wire	[3:0]	hp0_axi4_AWQOS;
+		//
+	wire		hp0_axi4_WVALID;
+	wire		hp0_axi4_WREADY;
+	// [5:0]	hp0_axi4_WID;
+	wire	[63:0]	hp0_axi4_WDATA;
+	wire	[7:0]	hp0_axi4_WSTRB;
+	wire		hp0_axi4_WLAST;
+		//
+	wire		hp0_axi4_BVALID;
+	wire		hp0_axi4_BREADY;
+	wire	[5:0]	hp0_axi4_BID;
+	wire	[1:0]	hp0_axi4_BRESP;
+		//
+	wire		hp0_axi4_ARVALID;
+	wire		hp0_axi4_ARREADY;
+	wire	[5:0]	hp0_axi4_ARID;
+	wire	[31:0]	hp0_axi4_ARADDR;
+	wire	[7:0]	hp0_axi4_ARLEN;
+	wire	[2:0]	hp0_axi4_ARSIZE;
+	wire	[1:0]	hp0_axi4_ARBURST;
+	wire		hp0_axi4_ARLOCK;
+	wire	[3:0]	hp0_axi4_ARCACHE;
+	wire	[2:0]	hp0_axi4_ARPROT;
+	wire	[3:0]	hp0_axi4_ARQOS;
+		//
+	wire		hp0_axi4_RVALID;
+	wire		hp0_axi4_RREADY;
+	wire	[5:0]	hp0_axi4_RID;
+	wire	[63:0]	hp0_axi4_RDATA;
+	wire		hp0_axi4_RLAST;
+	wire	[1:0]	hp0_axi4_RRESP;
+	//
+	wire	hp0_wrissuecap1_en, hp0_rdissuecap1_en;
+	wire	[5:0]	hp0_wacount;
+	wire	[7:0]	hp0_wcount;
+	wire	[2:0]	hp0_racount;
+	wire	[7:0]	hp0_rcount;
+@TOP.INSERT=
+	//
+	// Convert the HP0 signals from AXI4 to AXI3
+	axi2axi3 #(
+		.C_AXI_ID_WIDTH(7),
+		.C_AXI_ADDR_WIDTH(32),
+		.C_AXI_DATA_WIDTH(64)
+	) hp0_axi4_axi3 (
+		.S_AXI_ACLK(hp0_aclk),
+		.S_AXI_ARESETN(hp0_aresetn),
+		//
+		// HP0 AXI4 connections
+		//
+		.S_AXI_AWVALID(hp0_axi4_AWVALID),
+		.S_AXI_AWREADY(hp0_axi4_AWREADY),
+		.S_AXI_AWID(   hp0_axi4_AWID),
+		.S_AXI_AWADDR( hp0_axi4_AWADDR),
+		.S_AXI_AWLEN(  hp0_axi4_AWLEN),
+		.S_AXI_AWSIZE( hp0_axi4_AWSIZE),
+		.S_AXI_AWBURST(hp0_axi4_AWBURST),
+		.S_AXI_AWLOCK( hp0_axi4_AWLOCK),
+		.S_AXI_AWCACHE(hp0_axi4_AWCACHE),
+		.S_AXI_AWPROT( hp0_axi4_AWPROT),
+		.S_AXI_AWQOS(  hp0_axi4_AWQOS),
+		//
+		.S_AXI_WVALID(hp0_axi4_WVALID),
+		.S_AXI_WREADY(hp0_axi4_WREADY),
+		// .S_AXI_WID(hp0_axi4_WID),
+		.S_AXI_WDATA( hp0_axi4_WDATA),
+		.S_AXI_WSTRB( hp0_axi4_WSTRB),
+		.S_AXI_WLAST( hp0_axi4_WLAST),
+		//
+		.S_AXI_BVALID(hp0_axi4_BVALID),
+		.S_AXI_BREADY(hp0_axi4_BREADY),
+		.S_AXI_BID(   hp0_axi4_BID),
+		.S_AXI_BRESP( hp0_axi4_BRESP),
+		//
+		.S_AXI_ARVALID(hp0_axi4_ARVALID),
+		.S_AXI_ARREADY(hp0_axi4_ARREADY),
+		.S_AXI_ARID(   hp0_axi4_ARID),
+		.S_AXI_ARADDR( hp0_axi4_ARADDR),
+		.S_AXI_ARLEN(  hp0_axi4_ARLEN),
+		.S_AXI_ARSIZE( hp0_axi4_ARSIZE),
+		.S_AXI_ARBURST(hp0_axi4_ARBURST),
+		.S_AXI_ARLOCK( hp0_axi4_ARLOCK),
+		.S_AXI_ARCACHE(hp0_axi4_ARCACHE),
+		.S_AXI_ARPROT( hp0_axi4_ARPROT),
+		.S_AXI_ARQOS(  hp0_axi4_ARQOS),
+		//
+		.S_AXI_RVALID(hp0_axi4_RVALID),
+		.S_AXI_RREADY(hp0_axi4_RREADY),
+		.S_AXI_RID(   hp0_axi4_RID),
+		.S_AXI_RDATA( hp0_axi4_RDATA),
+		.S_AXI_RLAST( hp0_axi4_RLAST),
+		.S_AXI_RRESP( hp0_axi4_RRESP),
+		//
+		// GP0 32-bit AXI3 (outgoing) connections
+		//
+		.M_AXI_AWVALID(hp0_axi3_AWVALID),
+		.M_AXI_AWREADY(hp0_axi3_AWREADY),
+		.M_AXI_AWID(   hp0_axi3_AWID),
+		.M_AXI_AWADDR( hp0_axi3_AWADDR),
+		.M_AXI_AWLEN(  hp0_axi3_AWLEN),
+		.M_AXI_AWSIZE( hp0_axi3_AWSIZE),
+		.M_AXI_AWBURST(hp0_axi3_AWBURST),
+		.M_AXI_AWLOCK( hp0_axi3_AWLOCK),
+		.M_AXI_AWCACHE(hp0_axi3_AWCACHE),
+		.M_AXI_AWPROT( hp0_axi3_AWPROT),
+		.M_AXI_AWQOS(  hp0_axi3_AWQOS),
+		//
+		.M_AXI_WVALID(hp0_axi3_WVALID),
+		.M_AXI_WREADY(hp0_axi3_WREADY),
+		.M_AXI_WID(   hp0_axi3_WID),
+		.M_AXI_WDATA( hp0_axi3_WDATA),
+		.M_AXI_WSTRB( hp0_axi3_WSTRB),
+		.M_AXI_WLAST( hp0_axi3_WLAST),
+		//
+		.M_AXI_BVALID(hp0_axi3_BVALID),
+		.M_AXI_BREADY(hp0_axi3_BREADY),
+		.M_AXI_BID(   hp0_axi3_BID),
+		.M_AXI_BRESP( hp0_axi3_BRESP),
+		//
+		.M_AXI_ARVALID(hp0_axi3_ARVALID),
+		.M_AXI_ARREADY(hp0_axi3_ARREADY),
+		.M_AXI_ARID(   hp0_axi3_ARID),
+		.M_AXI_ARADDR( hp0_axi3_ARADDR),
+		.M_AXI_ARLEN(  hp0_axi3_ARLEN),
+		.M_AXI_ARSIZE( hp0_axi3_ARSIZE),
+		.M_AXI_ARBURST(hp0_axi3_ARBURST),
+		.M_AXI_ARLOCK( hp0_axi3_ARLOCK),
+		.M_AXI_ARCACHE(hp0_axi3_ARCACHE),
+		.M_AXI_ARPROT( hp0_axi3_ARPROT),
+		.M_AXI_ARQOS(  hp0_axi3_ARQOS),
+		//
+		.M_AXI_RVALID(hp0_axi3_RVALID),
+		.M_AXI_RREADY(hp0_axi3_RREADY),
+		.M_AXI_RID(   hp0_axi3_RID),
+		.M_AXI_RDATA( hp0_axi3_RDATA),
+		.M_AXI_RLAST( hp0_axi3_RLAST),
+		.M_AXI_RRESP( hp0_axi3_RRESP)
+		);
+@ZYNQ.CONNECT=
+		.S_AXI_HP0_ACLK(hp0_aclk),
+		//
+		.S_AXI_HP0_AWVALID(hp0_axi3_AWVALID && hp0_aresetn),
+		.S_AXI_HP0_AWREADY(hp0_axi3_AWREADY),
+		.S_AXI_HP0_AWID(   hp0_axi3_AWID),
+		.S_AXI_HP0_AWADDR( hp0_axi3_AWADDR),
+		.S_AXI_HP0_AWLEN(  hp0_axi3_AWLEN),
+		.S_AXI_HP0_AWSIZE( hp0_axi3_AWSIZE),
+		.S_AXI_HP0_AWBURST(hp0_axi3_AWBURST),
+		.S_AXI_HP0_AWLOCK(hp0_axi3_AWLOCK),
+		.S_AXI_HP0_AWCACHE(hp0_axi3_AWCACHE),
+		.S_AXI_HP0_AWPROT( hp0_axi3_AWPROT),
+		.S_AXI_HP0_AWQOS(  hp0_axi3_AWQOS),
+		//
+		.S_AXI_HP0_WVALID(hp0_axi3_WVALID && hp0_aresetn),
+		.S_AXI_HP0_WREADY(hp0_axi3_WREADY),
+		.S_AXI_HP0_WID(   hp0_axi3_WID),
+		.S_AXI_HP0_WDATA( hp0_axi3_WDATA),
+		.S_AXI_HP0_WSTRB( hp0_axi3_WSTRB),
+		.S_AXI_HP0_WLAST( hp0_axi3_WLAST),
+		//
+		.S_AXI_HP0_BVALID(hp0_axi3_BVALID),
+		.S_AXI_HP0_BREADY(hp0_axi3_BREADY || hp0_aresetn),
+		.S_AXI_HP0_BID(   hp0_axi3_BID),
+		.S_AXI_HP0_BRESP( hp0_axi3_BRESP),
+		//
+		.S_AXI_HP0_ARVALID(hp0_axi3_ARVALID && hp0_aresetn),
+		.S_AXI_HP0_ARREADY(hp0_axi3_ARREADY),
+		.S_AXI_HP0_ARID(   hp0_axi3_ARID),
+		.S_AXI_HP0_ARADDR( hp0_axi3_ARADDR),
+		.S_AXI_HP0_ARLEN(  hp0_axi3_ARLEN),
+		.S_AXI_HP0_ARSIZE( hp0_axi3_ARSIZE),
+		.S_AXI_HP0_ARBURST(hp0_axi3_ARBURST),
+		.S_AXI_HP0_ARLOCK( hp0_axi3_ARLOCK),
+		.S_AXI_HP0_ARCACHE(hp0_axi3_ARCACHE),
+		.S_AXI_HP0_ARPROT( hp0_axi3_ARPROT),
+		.S_AXI_HP0_ARQOS(  hp0_axi3_ARQOS),
+		//
+		.S_AXI_HP0_RVALID(hp0_axi3_RVALID),
+		.S_AXI_HP0_RREADY(hp0_axi3_RREADY || hp0_aresetn),
+		.S_AXI_HP0_RID(   hp0_axi3_RID),
+		.S_AXI_HP0_RDATA( hp0_axi3_RDATA),
+		.S_AXI_HP0_RLAST( hp0_axi3_RLAST),
+		.S_AXI_HP0_RRESP( hp0_axi3_RRESP),
+		//
+		.S_AXI_HP0_WRISSUECAP1_EN(hp0_wrissuecap1_en),
+		.S_AXI_HP0_RDISSUECAP1_EN(hp0_rdissuecap1_en),
+		.S_AXI_HP0_WACOUNT(hp0_wacount),
+		.S_AXI_HP0_WCOUNT( hp0_wcount),
+		.S_AXI_HP0_RACOUNT(hp0_racount),
+		.S_AXI_HP0_RCOUNT( hp0_rcount)
+@TOP.MAIN=
+		hp0_axi4_AWVALID,
+		hp0_axi4_AWREADY,
+		hp0_axi4_AWID,
+		hp0_axi4_AWADDR,
+		hp0_axi4_AWLEN,
+		hp0_axi4_AWSIZE,
+		hp0_axi4_AWBURST,
+		hp0_axi4_AWLOCK,
+		hp0_axi4_AWCACHE,
+		hp0_axi4_AWPROT,
+		hp0_axi4_AWQOS,
+		//
+		hp0_axi4_WVALID,
+		hp0_axi4_WREADY,
+		hp0_axi4_WDATA,
+		hp0_axi4_WSTRB,
+		hp0_axi4_WLAST,
+		//
+		hp0_axi4_BVALID,
+		hp0_axi4_BREADY,
+		hp0_axi4_BID,
+		hp0_axi4_BRESP,
+		//
+		hp0_axi4_ARVALID,
+		hp0_axi4_ARREADY,
+		hp0_axi4_ARID,
+		hp0_axi4_ARADDR,
+		hp0_axi4_ARLEN,
+		hp0_axi4_ARSIZE,
+		hp0_axi4_ARBURST,
+		hp0_axi4_ARLOCK,
+		hp0_axi4_ARCACHE,
+		hp0_axi4_ARPROT,
+		hp0_axi4_ARQOS,
+		//
+		hp0_axi4_RVALID,
+		hp0_axi4_RREADY,
+		hp0_axi4_RID,
+		hp0_axi4_RDATA,
+		hp0_axi4_RLAST,
+		hp0_axi4_RRESP,
+		//
+		hp0_wrissuecap1_en, hp0_rdissuecap1_en,
+		hp0_wacount,
+		hp0_wcount,
+		hp0_racount,
+		hp0_rcount
+@MAIN.PORTLIST=
+		// S_AXI_HP0_ACLK,
+		o_HP0_AWVALID,
+		i_HP0_AWREADY,
+		o_HP0_AWID,
+		o_HP0_AWADDR,
+		o_HP0_AWLEN,
+		o_HP0_AWSIZE,
+		o_HP0_AWBURST,
+		o_HP0_AWLOCK,
+		o_HP0_AWCACHE,
+		o_HP0_AWPROT,
+		o_HP0_AWQOS,
+		//
+		o_HP0_WVALID,
+		i_HP0_WREADY,
+		// o_HP0_WID,
+		o_HP0_WDATA,
+		o_HP0_WSTRB,
+		o_HP0_WLAST,
+		//
+		i_HP0_BVALID,
+		o_HP0_BREADY,
+		i_HP0_BID,
+		i_HP0_BRESP,
+		//
+		o_HP0_ARVALID,
+		i_HP0_ARREADY,
+		o_HP0_ARID,
+		o_HP0_ARADDR,
+		o_HP0_ARLEN,
+		o_HP0_ARSIZE,
+		o_HP0_ARBURST,
+		o_HP0_ARLOCK,
+		o_HP0_ARCACHE,
+		o_HP0_ARPROT,
+		o_HP0_ARQOS,
+		//
+		i_HP0_RVALID,
+		o_HP0_RREADY,
+		i_HP0_RID,
+		i_HP0_RDATA,
+		i_HP0_RLAST,
+		i_HP0_RRESP,
+		//
+		o_HP0_WRISSUECAP1_EN,
+		o_HP0_RDISSUECAP1_EN,
+		i_HP0_WACOUNT,
+		i_HP0_WCOUNT,
+		i_HP0_RACOUNT,
+		i_HP0_RCOUNT
+@MAIN.IODECL=
+	output	wire		o_HP0_AWVALID;
+	input	wire		i_HP0_AWREADY;
+	output	wire	[5:0]	o_HP0_AWID;
+	output	wire	[31:0]	o_HP0_AWADDR;
+	output	wire	[7:0]	o_HP0_AWLEN;
+	output	wire	[2:0]	o_HP0_AWSIZE;
+	output	wire	[1:0]	o_HP0_AWBURST;
+	output	wire		o_HP0_AWLOCK;
+	output	wire	[3:0]	o_HP0_AWCACHE;
+	output	wire	[2:0]	o_HP0_AWPROT;
+	output	wire	[3:0]	o_HP0_AWQOS;
+		//
+	output	wire		o_HP0_WVALID;
+	input	wire		i_HP0_WREADY;
+	// output	wire	[7:0]	o_HP0_WID;
+	output	wire	[63:0]	o_HP0_WDATA;
+	output	wire	[7:0]	o_HP0_WSTRB;
+	output	wire		o_HP0_WLAST;
+		//
+	input	wire		i_HP0_BVALID;
+	output	wire		o_HP0_BREADY;
+	input	wire	[5:0]	i_HP0_BID;
+	input	wire	[1:0]	i_HP0_BRESP;
+		//
+	output	wire		o_HP0_ARVALID;
+	input	wire		i_HP0_ARREADY;
+	output	wire	[5:0]	o_HP0_ARID;
+	output	wire	[31:0]	o_HP0_ARADDR;
+	output	wire	[7:0]	o_HP0_ARLEN;
+	output	wire	[2:0]	o_HP0_ARSIZE;
+	output	wire	[1:0]	o_HP0_ARBURST;
+	output	wire		o_HP0_ARLOCK;
+	output	wire	[3:0]	o_HP0_ARCACHE;
+	output	wire	[2:0]	o_HP0_ARPROT;
+	output	wire	[3:0]	o_HP0_ARQOS;
+		//
+	// Verilator lint_off UNUSED
+	input	wire		i_HP0_RVALID;
+	output	wire		o_HP0_RREADY;
+	input	wire	[5:0]	i_HP0_RID;
+	input	wire	[63:0]	i_HP0_RDATA;
+	input	wire		i_HP0_RLAST;
+	input	wire	[1:0]	i_HP0_RRESP;
+	// Verilator lint_on  UNUSED
+		//
+	// Verilator lint_off UNUSED
+	output	wire		o_HP0_WRISSUECAP1_EN,
+				o_HP0_RDISSUECAP1_EN;
+	input	wire	[5:0]	i_HP0_WACOUNT;
+	input	wire	[7:0]	i_HP0_WCOUNT;
+	input	wire	[2:0]	i_HP0_RACOUNT;
+	input	wire	[7:0]	i_HP0_RCOUNT;
+	// Verilator lint_on  UNUSED
+		//
+@MAIN.INSERT=
+	//
+	// Connect the PS master port (AXI3 out of the Zynq) to our internal
+	// bus representation
+	assign	o_HP0_AWVALID = @$(SLAVE.PREFIX)_awvalid;
+	assign	@$(SLAVE.PREFIX)_awready = i_HP0_AWREADY;
+	assign	o_HP0_AWID   = @$(SLAVE.PREFIX)_awid;
+	assign	o_HP0_AWADDR = @$(SLAVE.PREFIX)_awaddr;
+	assign	o_HP0_AWLEN  = @$(SLAVE.PREFIX)_awlen;
+	assign	o_HP0_AWSIZE = @$(SLAVE.PREFIX)_awsize;
+	assign	o_HP0_AWBURST= @$(SLAVE.PREFIX)_awburst;
+	assign	o_HP0_AWLOCK = @$(SLAVE.PREFIX)_awlock;
+	assign	o_HP0_AWCACHE= @$(SLAVE.PREFIX)_awcache;
+	assign	o_HP0_AWPROT = @$(SLAVE.PREFIX)_awprot;
+	assign	o_HP0_AWQOS  = @$(SLAVE.PREFIX)_awqos;
+		//
+	assign	o_HP0_WVALID = @$(SLAVE.PREFIX)_wvalid;
+	assign	@$(SLAVE.PREFIX)_wready = i_HP0_WREADY;
+		// M_AXI_HP0_WID,
+	assign	o_HP0_WDATA = @$(SLAVE.PREFIX)_wdata;
+	assign	o_HP0_WSTRB = @$(SLAVE.PREFIX)_wstrb;
+	assign	o_HP0_WLAST = @$(SLAVE.PREFIX)_wlast;
+		//
+	assign	@$(SLAVE.PREFIX)_bvalid = i_HP0_BVALID;
+	assign	o_HP0_BREADY = @$(SLAVE.PREFIX)_bready;
+	assign	@$(SLAVE.PREFIX)_bid    = i_HP0_BID;
+	assign	@$(SLAVE.PREFIX)_bresp  = i_HP0_BRESP;
+		//
+	assign	o_HP0_ARVALID = @$(SLAVE.PREFIX)_arvalid;
+	assign	@$(SLAVE.PREFIX)_arready = i_HP0_ARREADY;
+	assign	o_HP0_ARID   = @$(SLAVE.PREFIX)_arid;
+	assign	o_HP0_ARADDR = @$(SLAVE.PREFIX)_araddr;
+	assign	o_HP0_ARLEN  = @$(SLAVE.PREFIX)_arlen;
+	assign	o_HP0_ARSIZE = @$(SLAVE.PREFIX)_arsize;
+	assign	o_HP0_ARBURST= @$(SLAVE.PREFIX)_arburst;
+	assign	o_HP0_ARLOCK = @$(SLAVE.PREFIX)_arlock;
+	assign	o_HP0_ARCACHE= @$(SLAVE.PREFIX)_arcache;
+	assign	o_HP0_ARPROT = @$(SLAVE.PREFIX)_arprot;
+	assign	o_HP0_ARQOS  = @$(SLAVE.PREFIX)_arqos;
+		//
+	assign	@$(SLAVE.PREFIX)_rvalid = i_HP0_RVALID;
+	assign	o_HP0_RREADY = @$(SLAVE.PREFIX)_rready;
+	assign	@$(SLAVE.PREFIX)_rid    = i_HP0_RID;
+	assign	@$(SLAVE.PREFIX)_rdata  = i_HP0_RDATA;
+	assign	@$(SLAVE.PREFIX)_rlast  = i_HP0_RLAST;
+	assign	@$(SLAVE.PREFIX)_rresp  = i_HP0_RRESP;
+
+	assign	o_HP0_WRISSUECAP1_EN = 1'b1;
+	assign	o_HP0_RDISSUECAP1_EN = 1'b1;
+
