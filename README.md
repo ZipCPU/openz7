@@ -23,7 +23,7 @@ crossbar](https://github.com/ZipCPU/wb2axip/blob/master/rtl/axixbar.v), my
 [AXI-lite 
 crossbar](https://github.com/ZipCPU/wb2axip/blob/master/rtl/axilxbar.v) (if
 necessary), a [bridge from AXI3 to
-AXI4](https://github.com/ZipCPU/wb2axip/blob/master/rtl/axi2axilite.v),
+AXI4](https://github.com/ZipCPU/wb2axip/blob/master/rtl/axi32axi.v),
 a [bridge from AXI4 to
 AXI-lite](https://github.com/ZipCPU/wb2axip/blob/master/rtl/axi2axilite.v),
 and (hopefully) a [bridge from AXI4 to
